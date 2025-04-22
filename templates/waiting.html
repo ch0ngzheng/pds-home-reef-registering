@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Reef - Writing RFID Tag</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- No Firebase client libraries needed anymore -->
+    <style>
+        body {
+            background-color: #f0f8ff;
+            padding-top: 2rem;
+        }
+        .form-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            color: #0d6efd;
+        }
+        .waiting-container {
+            text-align: center;
+            margin: 2rem 0;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: #0d6efd;
+        }
+        .status-text {
+            margin-top: 1rem;
+            font-size: 1.2rem;
+        }
+        .status-details {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <div class="header">
+                <h1>Home Reef</h1>
+                <p class="text-muted">RFID Tag Registration</p>
+            </div>
+
+            <div class="waiting-container">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="status-text" id="status-text">
+                    Waiting for RFID tag...
+                </div>
+                <div class="status-details small text-muted">
+                    <p>Please place your RFID tag on the reader when prompted.</p>
+                    <p>Your registration information has been saved.</p>
+                    <p>Command ID: <span class="font-monospace">{{ command_id }}</span></p>
+                </div>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-secondary" type="button" id="cancel-button">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        
+        // Command ID from Flask
+        const commandId = "{{ command_id }}";
+        const statusText = document.getElementById('status-text');
+        const cancelButton = document.getElementById('cancel-button');
+        
+        // Poll for command status updates using server-side endpoint
+        function checkCommandStatus() {
+            console.log('Checking command status for ID:', commandId);
+            
+            // Use fetch to call our server-side endpoint
+            fetch(`/check_command_status/${commandId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Server returned status:', data);
+                    
+                    // Update UI based on status
+                    if (data.status === 'pending' || data.status === 'waiting') {
+                        statusText.textContent = 'Waiting for RFID tag...';
+                    } else if (data.status === 'in_progress' || data.status === 'writing' || data.status === 'processing') {
+                        statusText.textContent = 'Writing to RFID tag...';
+                    } else if (data.status === 'completed') {
+                        statusText.textContent = 'RFID tag successfully written!';
+                        console.log('Success status detected, redirecting to success page...');
+                        // Redirect to success page after a short delay
+                        setTimeout(() => {
+                            console.log('Executing redirect now');
+                            window.location.href = "{{ url_for('success') }}";
+                        }, 1500);
+                    } else if (data.status === 'failed' || data.status === 'error') {
+                        statusText.textContent = data.message || 'Failed to write RFID tag. Please try again.';
+                        statusText.classList.add('text-danger');
+                    } else {
+                        statusText.textContent = `Processing: ${data.status}`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                    statusText.textContent = 'Error checking status. Please wait...';
+                });
+        }
+        
+        // Start polling when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Do initial check
+            checkCommandStatus();
+            
+            // Set up polling every 2 seconds
+            const statusInterval = setInterval(() => {
+                checkCommandStatus();
+            }, 2000);
+            
+            // Set up cancel button
+            cancelButton.addEventListener('click', function() {
+                clearInterval(statusInterval); // Stop polling
+                window.location.href = "{{ url_for('index') }}";
+            });
+        });
+        
+
+    </script>
+</body>
+</html>
