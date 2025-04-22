@@ -15,8 +15,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev_key_replace_in_production')
 
 # Initialize Firebase
 try:
-    # Path to your Firebase service account JSON file
-    cred = credentials.Certificate('pds-studio-firebase-adminsdk-fbsvc-cb9200e4d3.json')
+    # Load Firebase service account from environment variable
+    firebase_creds = json.loads(os.environ['FIREBASE_CREDENTIALS'])
+    cred = credentials.Certificate(firebase_creds)
     firebase_admin.initialize_app(cred, {
         'databaseURL': os.environ.get('FIREBASE_DATABASE_URL', 'https://pds-studio-default-rtdb.asia-southeast1.firebasedatabase.app/')
     })
@@ -25,7 +26,6 @@ except Exception as e:
     print(f"Error initializing Firebase: {e}")
     # Fallback to local storage if Firebase initialization fails
     pass
-
 
 @app.route('/')
 def index():
@@ -213,4 +213,5 @@ def success():
     return render_template('success.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
